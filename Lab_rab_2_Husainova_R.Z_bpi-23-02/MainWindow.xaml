@@ -5,9 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Lab_rab_2_Husainova_R.Z_bpi_23_02"
         mc:Ignorable="d"
-        Title="Сравнение сортировок (многопоточность)" Height="450" Width="600">
+        Title="Сравнение сортировок (многопоточность)" Height="450" Width="650">
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -19,6 +20,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <!-- Размер массива и кнопка генерации -->
@@ -36,7 +38,9 @@ BubbleSortCommand}" Margin="3" Width="120"/>
         <Button Grid.Row="2" Grid.Column="1" Content="Быстрая" Command="{Binding QuickSortCommand}"
 Margin="3" Width="120"/>
         <Button Grid.Row="2" Grid.Column="2" Content="Вставками" Command="{Binding
-InsertionSortCommand}" Margin="3" Width="120"/>
+InsertionSortCommand}" Margin="3" Width="130"/>
+        <Button Grid.Row="2" Grid.Column="3" Content="Шейкерная" Command="{Binding
+ShakerSortCommand}" Margin="3" Width="120"/>
         <!-- Результаты сортировок -->
         <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding BubbleSortResult}"
 Margin="3" TextWrapping="Wrap"/>
@@ -44,8 +48,9 @@ Margin="3" TextWrapping="Wrap"/>
 Margin="3" TextWrapping="Wrap"/>
         <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding InsertionSortResult}"
 Margin="3" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding ShakerSortResult}" Margin="3"/>
         <!-- Общее число сравнений -->
-        <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding TotalComparisons}"
+        <TextBlock Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding TotalComparisons}"
 Margin="3" FontWeight="Bold"/>
     </Grid>
 </Window>

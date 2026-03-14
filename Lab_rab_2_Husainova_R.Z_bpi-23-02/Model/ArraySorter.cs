@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
 {
@@ -16,6 +17,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
         public event SortCompletedHandler BubbleSortCompleted;
         public event SortCompletedHandler QuickSortCompleted;
         public event SortCompletedHandler InsertionSortCompleted;
+        public event SortCompletedHandler ShakerSortCompleted;
         // Свойство для доступа к общему счётчику
         public long TotalComparisons => _totalComparisons;
         // Генерация случайного массива заданного размера
@@ -128,6 +130,60 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                 _totalComparisons += comparisons;
             }
             InsertionSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds);
+        }
+        // Метод шейкерной сортировки
+        public void ShakerSort(int[] originalArray)
+        {
+            int[] array = CopyArray(originalArray);
+            long comparisons = 0;
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+
+            int start = 0;
+            int end = array.Length - 1;
+            bool swapped = true;
+
+            while (swapped)
+            {
+                swapped = false;
+
+                for (int i = start; i < end; i++)
+                {
+                    comparisons++;
+                    if (array[i] > array[i + 1])
+                    {
+                        int temp = array[i];
+                        array[i] = array[i + 1];
+                        array[i + 1] = temp;
+                        swapped = true;
+                    }
+                }
+
+                if (!swapped) break;
+
+                swapped = false;
+                end--;
+
+                for (int i = end; i > start; i--)
+                {
+                    comparisons++;
+                    if (array[i] < array[i - 1])
+                    {
+                        int temp = array[i];
+                        array[i] = array[i - 1];
+                        array[i - 1] = temp;
+                        swapped = true;
+                    }
+                }
+
+                start++;
+            }
+
+            watch.Stop();
+            lock (_locker)
+            {
+                _totalComparisons += comparisons;
+            }
+            ShakerSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds);
         }
     }
 }
