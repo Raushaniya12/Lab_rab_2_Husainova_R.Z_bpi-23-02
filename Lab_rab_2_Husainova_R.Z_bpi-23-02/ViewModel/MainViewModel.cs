@@ -87,9 +87,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         {
             _uiContext.Post(_ =>
             {
-                BubbleSortResult = $"Пузырьковая: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс,
-           сравнений: { comparisons}
-                ";
+                BubbleSortResult = $"Пузырьковая: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс,сравнений: { comparisons}";
             UpdateTotalComparisons();
                 BubbleSortCommand.NotifyCanExecuteChanged();
             }, null);
@@ -98,9 +96,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         {
             _uiContext.Post(_ =>
             {
-                QuickSortResult = $"Быстрая: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс,
-           сравнений: { comparisons}
-                ";
+                QuickSortResult = $"Быстрая: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс,сравнений: { comparisons}";
             UpdateTotalComparisons();
                 QuickSortCommand.NotifyCanExecuteChanged();
             }, null);
