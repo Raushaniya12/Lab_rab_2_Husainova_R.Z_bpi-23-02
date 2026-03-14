@@ -23,6 +23,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [ObservableProperty]
         private string _insertionSortResult;
         [ObservableProperty]
+        private string _shakerSortResult;
+        [ObservableProperty]
         private string _totalComparisons = "Общее число сравнений: 0";
         [ObservableProperty]
         private bool _canGenerate = true;
@@ -34,6 +36,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
             _sorter.BubbleSortCompleted += OnBubbleSortCompleted;
             _sorter.QuickSortCompleted += OnQuickSortCompleted;
             _sorter.InsertionSortCompleted += OnInsertionSortCompleted;
+            _sorter.ShakerSortCompleted += OnShakerSortCompleted;
         }
         // Команда генерации массива
         [RelayCommand(CanExecute = nameof(CanGenerateArray))]
@@ -44,12 +47,14 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
             OriginalArrayString = "Исходный массив: " + string.Join(", ", _originalArray, 0, Math.Min(20,
            _originalArray.Length)) + (ArraySize > 20 ? "..." : "");
             // Сбрасываем предыдущие результаты
-            BubbleSortResult = QuickSortResult = InsertionSortResult = null;
+            // Сбрасываем предыдущие результаты
+            BubbleSortResult = QuickSortResult = InsertionSortResult = ShakerSortResult = null;
             TotalComparisons = "Общее число сравнений: 0";
             // Обновляем состояние команд сортировок
             BubbleSortCommand.NotifyCanExecuteChanged();
             QuickSortCommand.NotifyCanExecuteChanged();
             InsertionSortCommand.NotifyCanExecuteChanged();
+            ShakerSortCommand.NotifyCanExecuteChanged();
         }
         private bool CanGenerateArray() => CanGenerate;
         // Пузырьковая сортировка
@@ -82,6 +87,17 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
             Thread thread = new Thread(() => _sorter.InsertionSort(_originalArray));
             thread.Start();
         }
+        // Шейкерная сортировка 
+        private bool CanSortShaker() => _originalArray != null && ShakerSortResult != "Сортируется...";
+        [RelayCommand(CanExecute = nameof(CanSortShaker))]
+        private void ShakerSort()
+        {
+            ShakerSortResult = "Сортируется...";
+            ShakerSortCommand.NotifyCanExecuteChanged();
+
+            Thread thread = new Thread(() => _sorter.ShakerSort(_originalArray));
+            thread.Start();
+        }
         // Обработчики событий (вызываются из фоновых потоков)
         private void OnBubbleSortCompleted(int[] sortedArray, long comparisons, double elapsedMs)
         {
@@ -108,6 +124,15 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                 InsertionSortResult = $"Вставками: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс, сравнений:{ comparisons}";
  UpdateTotalComparisons();
                 InsertionSortCommand.NotifyCanExecuteChanged();
+            }, null);
+        }
+        private void OnShakerSortCompleted(int[] sortedArray, long comparisons, double elapsedMs)
+        {
+            _uiContext.Post(_ =>
+            {
+                ShakerSortResult = $"Шейкерная: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс, сравнений: {comparisons}";
+                UpdateTotalComparisons();
+                ShakerSortCommand.NotifyCanExecuteChanged();
             }, null);
         }
         private void UpdateTotalComparisons()
