@@ -17,6 +17,12 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
         public event SortCompletedHandler QuickSortCompleted;
         public event SortCompletedHandler InsertionSortCompleted;
         public event SortCompletedHandler ShakerSortCompleted;
+        // Делегаты и события для обновления прогресса
+        public delegate void ProgressChangedHandler(int percent);
+        public event ProgressChangedHandler BubbleSortProgressChanged;
+        public event ProgressChangedHandler QuickSortProgressChanged;
+        public event ProgressChangedHandler InsertionSortProgressChanged;
+        public event ProgressChangedHandler ShakerSortProgressChanged;
         // Свойство для доступа к общему счётчику
         public long TotalComparisons => _totalComparisons;
         // Генерация случайного массива заданного размера
@@ -41,16 +47,27 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             int[] array = CopyArray(originalArray);
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
+            int n = array.Length;
+            int totalOperations = n * (n - 1) / 2; 
+            int currentOperation = 0;
+            int lastReportedPercent = -1;
             for (int i = 0; i < array.Length - 1; i++)
             {
                 for (int j = 0; j < array.Length - 1 - i; j++)
                 {
                     comparisons++;
+                    currentOperation++;
                     if (array[j] > array[j + 1])
                     {
                         int temp = array[j];
                         array[j] = array[j + 1];
                         array[j + 1] = temp;
+                    }
+                    int percent = (int)((currentOperation * 100.0) / totalOperations);
+                    if (percent != lastReportedPercent)
+                    {
+                        BubbleSortProgressChanged?.Invoke(percent);
+                        lastReportedPercent = percent;
                     }
                 }
             }
@@ -67,7 +84,9 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             int[] array = CopyArray(originalArray);
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            QuickSortRecursive(array, 0, array.Length - 1, ref comparisons);
+            int totalElements = array.Length;
+            int[] processedTracker = { 0 };
+            QuickSortRecursive(array, 0, array.Length - 1, ref comparisons, processedTracker, totalElements);
             watch.Stop();
             lock (_locker)
             {
@@ -75,13 +94,18 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             }
             QuickSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds);
         }
-        private void QuickSortRecursive(int[] arr, int left, int right, ref long comparisons)
+        private void QuickSortRecursive(int[] arr, int left, int right, ref long comparisons, int[] processedTracker, int totalElements)
         {
             if (left < right)
             {
                 int pivotIndex = Partition(arr, left, right, ref comparisons);
-                QuickSortRecursive(arr, left, pivotIndex - 1, ref comparisons);
-                QuickSortRecursive(arr, pivotIndex + 1, right, ref comparisons);
+                int processed = processedTracker[0] + (right - left + 1);
+                int percent = Math.Min(100, (int)((processed * 100.0) / totalElements));
+                QuickSortProgressChanged?.Invoke(percent);
+                processedTracker[0] = processed;
+
+                QuickSortRecursive(arr, left, pivotIndex - 1, ref comparisons, processedTracker, totalElements);
+                QuickSortRecursive(arr, pivotIndex + 1, right, ref comparisons, processedTracker, totalElements);
             }
         }
         private int Partition(int[] arr, int left, int right, ref long comparisons)
@@ -110,6 +134,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             int[] array = CopyArray(originalArray);
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
+            int n = array.Length;
+            int lastReportedPercent = -1;
             for (int i = 1; i < array.Length; i++)
             {
                 int key = array[i];
@@ -122,6 +148,12 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                 }
                 comparisons++; // учёт последнего сравнения, когда условие не выполнено
                 array[j + 1] = key;
+                int percent = (int)((i * 100.0) / n);
+                if (percent != lastReportedPercent)
+                {
+                    InsertionSortProgressChanged?.Invoke(percent);
+                    lastReportedPercent = percent;
+                }
             }
             watch.Stop();
             lock (_locker)
@@ -137,10 +169,14 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            int start = 0;
-            int end = array.Length - 1;
-            bool swapped = true;
+            int n = array.Length;
+            int lastReportedPercent = -1;
+            int totalPasses = n;
+            int currentPass = 0;     
 
+            int start = 0;
+            int end = n - 1;
+            bool swapped = true;
             while (swapped)
             {
                 swapped = false;
@@ -159,6 +195,14 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
 
                 if (!swapped) break;
 
+                currentPass++;
+                int percent = Math.Min(100, (int)((currentPass * 100.0) / totalPasses));
+                if (percent != lastReportedPercent)
+                {
+                    ShakerSortProgressChanged?.Invoke(percent);
+                    lastReportedPercent = percent;
+                }
+
                 swapped = false;
                 end--;
 
@@ -173,7 +217,13 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                         swapped = true;
                     }
                 }
-
+                currentPass++;
+                percent = Math.Min(100, (int)((currentPass * 100.0) / totalPasses));
+                if (percent != lastReportedPercent)
+                {
+                    ShakerSortProgressChanged?.Invoke(percent);
+                    lastReportedPercent = percent;
+                }
                 start++;
             }
 
