@@ -5,9 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Lab_rab_2_Husainova_R.Z_bpi_23_02"
         mc:Ignorable="d"
-        Title="Сравнение сортировок (многопоточность)" Height="450" Width="650">
+        Title="Сравнение сортировок (многопоточность)" Height="650" Width="750">
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -24,34 +27,53 @@
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
+
         <!-- Размер массива и кнопка генерации -->
         <Label Grid.Row="0" Grid.Column="0" Content="Размер массива:" Margin="3"/>
-        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ArraySize,
-UpdateSourceTrigger=PropertyChanged}" Margin="3"/>
-        <Button Grid.Row="0" Grid.Column="2" Content="Сгенерировать" Command="{Binding
-GenerateArrayCommand}" Margin="3"/>
+        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ArraySize, UpdateSourceTrigger=PropertyChanged}" Margin="3"/>
+        <Button Grid.Row="0" Grid.Column="2" Content="Сгенерировать" Command="{Binding GenerateArrayCommand}" Margin="3"/>
+
         <!-- Отображение исходного массива -->
-        <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding OriginalArrayString}"
-Margin="3" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding OriginalArrayString}" Margin="3" TextWrapping="Wrap"/>
+
         <!-- Кнопки запуска сортировок -->
-        <Button Grid.Row="2" Grid.Column="0" Content="Пузырьковая" Command="{Binding
-BubbleSortCommand}" Margin="3" Width="120"/>
-        <Button Grid.Row="2" Grid.Column="1" Content="Быстрая" Command="{Binding QuickSortCommand}"
-Margin="3" Width="120"/>
-        <Button Grid.Row="2" Grid.Column="2" Content="Вставками" Command="{Binding
-InsertionSortCommand}" Margin="3" Width="130"/>
-        <Button Grid.Row="2" Grid.Column="3" Content="Шейкерная" Command="{Binding
-ShakerSortCommand}" Margin="3" Width="120"/>
+        <Button Grid.Row="2" Grid.Column="0" Content="Пузырьковая" Command="{Binding BubbleSortCommand}" Margin="3" Width="120"/>
+        <Button Grid.Row="2" Grid.Column="1" Content="Быстрая" Command="{Binding QuickSortCommand}" Margin="3" Width="120"/>
+        <Button Grid.Row="2" Grid.Column="2" Content="Вставками" Command="{Binding InsertionSortCommand}" Margin="3" Width="130"/>
+        <Button Grid.Row="2" Grid.Column="3" Content="Шейкерная" Command="{Binding ShakerSortCommand}" Margin="3" Width="120"/>
+
+        <!-- Прогресс бары для каждой сортировки -->
+        <!-- Пузырьковая -->
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="Прогресс:" Margin="3" VerticalAlignment="Center"/>
+        <ProgressBar Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
+                     Value="{Binding BubbleSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
+        <TextBlock Grid.Row="3" Grid.Column="3" Text="{Binding BubbleSortProgressText}" Margin="3" VerticalAlignment="Center"/>
+
+        <!-- Быстрая -->
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="Прогресс:" Margin="3" VerticalAlignment="Center"/>
+        <ProgressBar Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
+                     Value="{Binding QuickSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
+        <TextBlock Grid.Row="4" Grid.Column="3" Text="{Binding QuickSortProgressText}" Margin="3" VerticalAlignment="Center"/>
+
+        <!-- Вставками -->
+        <TextBlock Grid.Row="5" Grid.Column="0" Text="Прогресс:" Margin="3" VerticalAlignment="Center"/>
+        <ProgressBar Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
+                     Value="{Binding InsertionSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
+        <TextBlock Grid.Row="5" Grid.Column="3" Text="{Binding InsertionSortProgressText}" Margin="3" VerticalAlignment="Center"/>
+
+        <!-- Шейкерная -->
+        <TextBlock Grid.Row="6" Grid.Column="0" Text="Прогресс:" Margin="3" VerticalAlignment="Center"/>
+        <ProgressBar Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
+                     Value="{Binding ShakerSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
+        <TextBlock Grid.Row="6" Grid.Column="3" Text="{Binding ShakerSortProgressText}" Margin="3" VerticalAlignment="Center"/>
+
         <!-- Результаты сортировок -->
-        <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding BubbleSortResult}"
-Margin="3" TextWrapping="Wrap"/>
-        <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding QuickSortResult}"
-Margin="3" TextWrapping="Wrap"/>
-        <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding InsertionSortResult}"
-Margin="3" TextWrapping="Wrap"/>
-        <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding ShakerSortResult}" Margin="3"/>
+        <TextBlock Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding BubbleSortResult}" Margin="3" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding QuickSortResult}" Margin="3" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding InsertionSortResult}" Margin="3" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding ShakerSortResult}" Margin="3" TextWrapping="Wrap"/>
+
         <!-- Общее число сравнений -->
-        <TextBlock Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding TotalComparisons}"
-Margin="3" FontWeight="Bold"/>
+        <TextBlock Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding TotalComparisons}" Margin="3" FontWeight="Bold"/>
     </Grid>
 </Window>
