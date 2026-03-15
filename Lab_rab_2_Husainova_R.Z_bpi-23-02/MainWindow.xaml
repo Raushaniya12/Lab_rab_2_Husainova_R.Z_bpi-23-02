@@ -41,7 +41,8 @@
         <Button Grid.Row="2" Grid.Column="1" Content="Быстрая" Command="{Binding QuickSortCommand}" Margin="3" Width="120"/>
         <Button Grid.Row="2" Grid.Column="2" Content="Вставками" Command="{Binding InsertionSortCommand}" Margin="3" Width="130"/>
         <Button Grid.Row="2" Grid.Column="3" Content="Шейкерная" Command="{Binding ShakerSortCommand}" Margin="3" Width="120"/>
-
+        <Button Grid.Row="0" Grid.Column="3" Content="Прервать все потоки" Command="{Binding CancelAllCommand}" 
+        Margin="3" Width="150"/>
         <!-- Прогресс бары для каждой сортировки -->
         <!-- Пузырьковая -->
         <TextBlock Grid.Row="3" Grid.Column="0" Text="Прогресс:" Margin="3" VerticalAlignment="Center"/>
