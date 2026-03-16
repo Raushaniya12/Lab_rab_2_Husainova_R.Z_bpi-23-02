@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
@@ -12,7 +13,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
         private long _totalComparisons;
         private readonly object _locker = new object();
         // Делегаты и события для уведомления о завершении сортировки
-        public delegate void SortCompletedHandler(int[] sortedArray, long comparisons, double elapsedMilliseconds);
+        public delegate void SortCompletedHandler(int[] sortedArray, long comparisons, double elapsedMilliseconds, bool wasCancelled);
         public event SortCompletedHandler BubbleSortCompleted;
         public event SortCompletedHandler QuickSortCompleted;
         public event SortCompletedHandler InsertionSortCompleted;
@@ -42,78 +43,114 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             return copy;
         }
         // Метод для пузырьковой сортировки (запускается в потоке)
-        public void BubbleSort(int[] originalArray)
+        public void BubbleSort(int[] originalArray, CancellationToken cancellationToken)
         {
             int[] array = CopyArray(originalArray);
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
             int n = array.Length;
-            int totalOperations = n * (n - 1) / 2; 
+            int totalOperations = n * (n - 1) / 2;
             int currentOperation = 0;
             int lastReportedPercent = -1;
-            for (int i = 0; i < array.Length - 1; i++)
+            bool wasCancelled = false;
+            try
             {
-                for (int j = 0; j < array.Length - 1 - i; j++)
+                for (int i = 0; i < array.Length - 1; i++)
                 {
-                    comparisons++;
-                    currentOperation++;
-                    if (array[j] > array[j + 1])
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    for (int j = 0; j < array.Length - 1 - i; j++)
                     {
-                        int temp = array[j];
-                        array[j] = array[j + 1];
-                        array[j + 1] = temp;
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            wasCancelled = true;
+                            break;
+                        }
+
+                        comparisons++;
+                        currentOperation++;
+
+                        if (array[j] > array[j + 1])
+                        {
+                            int temp = array[j];
+                            array[j] = array[j + 1];
+                            array[j + 1] = temp;
+                        }
+                        int percent = (int)((currentOperation * 100.0) / totalOperations);
+                        if (percent != lastReportedPercent)
+                        {
+                            BubbleSortProgressChanged?.Invoke(percent);
+                            lastReportedPercent = percent;
+                        }
                     }
-                    int percent = (int)((currentOperation * 100.0) / totalOperations);
-                    if (percent != lastReportedPercent)
-                    {
-                        BubbleSortProgressChanged?.Invoke(percent);
-                        lastReportedPercent = percent;
-                    }
+
+                    if (wasCancelled) break;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                wasCancelled = true;
             }
             watch.Stop();
             lock (_locker)
             {
                 _totalComparisons += comparisons;
             }
-            BubbleSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds);
+            BubbleSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
         // Метод для быстрой сортировки (обёртка)
-        public void QuickSort(int[] originalArray)
+        public void QuickSort(int[] originalArray, CancellationToken cancellationToken)
         {
             int[] array = CopyArray(originalArray);
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
             int totalElements = array.Length;
+            bool wasCancelled = false;
             int[] processedTracker = { 0 };
-            QuickSortRecursive(array, 0, array.Length - 1, ref comparisons, processedTracker, totalElements);
-            watch.Stop();
-            lock (_locker)
+            try
             {
-                _totalComparisons += comparisons;
+                QuickSortRecursive(array, 0, array.Length - 1, ref comparisons, processedTracker, totalElements, cancellationToken);
             }
-            QuickSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds);
+            catch (OperationCanceledException)
+            {
+                wasCancelled = true;
+            }
+
+            watch.Stop();
+
+            if (!wasCancelled)
+            {
+                lock (_locker)
+                {
+                    _totalComparisons += comparisons;
+                }
+            }
+
+            QuickSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
-        private void QuickSortRecursive(int[] arr, int left, int right, ref long comparisons, int[] processedTracker, int totalElements)
+        private void QuickSortRecursive(int[] arr, int left, int right, ref long comparisons, int[] processedTracker, int totalElements, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (left < right)
             {
-                int pivotIndex = Partition(arr, left, right, ref comparisons);
+                int pivotIndex = Partition(arr, left, right, ref comparisons, cancellationToken);
                 int processed = processedTracker[0] + (right - left + 1);
                 int percent = Math.Min(100, (int)((processed * 100.0) / totalElements));
                 QuickSortProgressChanged?.Invoke(percent);
                 processedTracker[0] = processed;
 
-                QuickSortRecursive(arr, left, pivotIndex - 1, ref comparisons, processedTracker, totalElements);
-                QuickSortRecursive(arr, pivotIndex + 1, right, ref comparisons, processedTracker, totalElements);
+                QuickSortRecursive(arr, left, pivotIndex - 1, ref comparisons, processedTracker, totalElements, cancellationToken);
+                QuickSortRecursive(arr, pivotIndex + 1, right, ref comparisons, processedTracker, totalElements, cancellationToken);
             }
         }
-        private int Partition(int[] arr, int left, int right, ref long comparisons)
+        private int Partition(int[] arr, int left, int right, ref long comparisons, CancellationToken cancellationToken)
         {
             int pivot = arr[right];
             int i = left - 1;
             for (int j = left; j < right; j++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 comparisons++;
                 if (arr[j] < pivot)
                 {
@@ -129,41 +166,67 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             return i + 1;
         }
         // Метод для сортировки вставками
-        public void InsertionSort(int[] originalArray)
+        public void InsertionSort(int[] originalArray, CancellationToken cancellationToken)
         {
             int[] array = CopyArray(originalArray);
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
             int n = array.Length;
             int lastReportedPercent = -1;
-            for (int i = 1; i < array.Length; i++)
+            bool wasCancelled = false;
+            try
             {
-                int key = array[i];
-                int j = i - 1;
-                while (j >= 0 && array[j] > key)
+                for (int i = 1; i < array.Length; i++)
                 {
-                    comparisons++;
-                    array[j + 1] = array[j];
-                    j--;
-                }
-                comparisons++; // учёт последнего сравнения, когда условие не выполнено
-                array[j + 1] = key;
-                int percent = (int)((i * 100.0) / n);
-                if (percent != lastReportedPercent)
-                {
-                    InsertionSortProgressChanged?.Invoke(percent);
-                    lastReportedPercent = percent;
+                    // Проверяем отмену
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    int key = array[i];
+                    int j = i - 1;
+
+                    while (j >= 0 && array[j] > key)
+                    {
+                        // Проверяем отмену
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            wasCancelled = true;
+                            break;
+                        }
+
+                        comparisons++;
+                        array[j + 1] = array[j];
+                        j--;
+                    }
+                    if (wasCancelled) break;
+
+                    comparisons++; // учёт последнего сравнения, когда условие не выполнено
+                    array[j + 1] = key;
+
+                    int percent = (int)((i * 100.0) / n);
+                    if (percent != lastReportedPercent)
+                    {
+                        InsertionSortProgressChanged?.Invoke(percent);
+                        lastReportedPercent = percent;
+                    }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                wasCancelled = true;
+            }
+
             watch.Stop();
-            lock (_locker)
+            if (!wasCancelled)
             {
-                _totalComparisons += comparisons;
+                lock (_locker)
+                {
+                    _totalComparisons += comparisons;
+                }
             }
-            InsertionSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds);
+            InsertionSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
         // Метод шейкерной сортировки
-        public void ShakerSort(int[] originalArray)
+        public void ShakerSort(int[] originalArray, CancellationToken cancellationToken)
         {
             int[] array = CopyArray(originalArray);
             long comparisons = 0;
@@ -172,67 +235,97 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             int n = array.Length;
             int lastReportedPercent = -1;
             int totalPasses = n;
-            int currentPass = 0;     
-
+            int currentPass = 0;
+            bool wasCancelled = false;
             int start = 0;
             int end = n - 1;
             bool swapped = true;
-            while (swapped)
+            try
             {
-                swapped = false;
-
-                for (int i = start; i < end; i++)
+                while (swapped)
                 {
-                    comparisons++;
-                    if (array[i] > array[i + 1])
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    swapped = false;
+
+                    for (int i = start; i < end; i++)
                     {
-                        int temp = array[i];
-                        array[i] = array[i + 1];
-                        array[i + 1] = temp;
-                        swapped = true;
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            wasCancelled = true;
+                            break;
+                        }
+
+                        comparisons++;
+                        if (array[i] > array[i + 1])
+                        {
+                            int temp = array[i];
+                            array[i] = array[i + 1];
+                            array[i + 1] = temp;
+                            swapped = true;
+                        }
                     }
-                }
 
-                if (!swapped) break;
+                    if (wasCancelled) break;
+                    if (!swapped) break;
 
-                currentPass++;
-                int percent = Math.Min(100, (int)((currentPass * 100.0) / totalPasses));
-                if (percent != lastReportedPercent)
-                {
-                    ShakerSortProgressChanged?.Invoke(percent);
-                    lastReportedPercent = percent;
-                }
-
-                swapped = false;
-                end--;
-
-                for (int i = end; i > start; i--)
-                {
-                    comparisons++;
-                    if (array[i] < array[i - 1])
+                    currentPass++;
+                    int percent = Math.Min(100, (int)((currentPass * 100.0) / totalPasses));
+                    if (percent != lastReportedPercent)
                     {
-                        int temp = array[i];
-                        array[i] = array[i - 1];
-                        array[i - 1] = temp;
-                        swapped = true;
+                        ShakerSortProgressChanged?.Invoke(percent);
+                        lastReportedPercent = percent;
                     }
+
+                    swapped = false;
+                    end--;
+
+                    for (int i = end; i > start; i--)
+                    {
+                        // Проверяем отмену
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            wasCancelled = true;
+                            break;
+                        }
+                        comparisons++;
+                        if (array[i] < array[i - 1])
+                        {
+                            int temp = array[i];
+                            array[i] = array[i - 1];
+                            array[i - 1] = temp;
+                            swapped = true;
+                        }
+                    }
+
+                    if (wasCancelled) break;
+
+                    currentPass++;
+                    percent = Math.Min(100, (int)((currentPass * 100.0) / totalPasses));
+                    if (percent != lastReportedPercent)
+                    {
+                        ShakerSortProgressChanged?.Invoke(percent);
+                        lastReportedPercent = percent;
+                    }
+                    start++;
                 }
-                currentPass++;
-                percent = Math.Min(100, (int)((currentPass * 100.0) / totalPasses));
-                if (percent != lastReportedPercent)
-                {
-                    ShakerSortProgressChanged?.Invoke(percent);
-                    lastReportedPercent = percent;
-                }
-                start++;
+            }
+            catch (OperationCanceledException)
+            {
+                wasCancelled = true;
             }
 
             watch.Stop();
-            lock (_locker)
+
+            if (!wasCancelled)
             {
-                _totalComparisons += comparisons;
+                lock (_locker)
+                {
+                    _totalComparisons += comparisons;
+                }
             }
-            ShakerSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds);
+
+            ShakerSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
     }
 }

@@ -45,25 +45,25 @@
         Margin="3" Width="150"/>
         <!-- Прогресс бары для каждой сортировки -->
         <!-- Пузырьковая -->
-        <TextBlock Grid.Row="3" Grid.Column="0" Text="Прогресс:" Margin="3" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="Пузырьковая:" Margin="3" VerticalAlignment="Center"/>
         <ProgressBar Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
                      Value="{Binding BubbleSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
         <TextBlock Grid.Row="3" Grid.Column="3" Text="{Binding BubbleSortProgressText}" Margin="3" VerticalAlignment="Center"/>
 
         <!-- Быстрая -->
-        <TextBlock Grid.Row="4" Grid.Column="0" Text="Прогресс:" Margin="3" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="Быстрая:" Margin="3" VerticalAlignment="Center"/>
         <ProgressBar Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
                      Value="{Binding QuickSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
         <TextBlock Grid.Row="4" Grid.Column="3" Text="{Binding QuickSortProgressText}" Margin="3" VerticalAlignment="Center"/>
 
         <!-- Вставками -->
-        <TextBlock Grid.Row="5" Grid.Column="0" Text="Прогресс:" Margin="3" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="5" Grid.Column="0" Text="Вставками:" Margin="3" VerticalAlignment="Center"/>
         <ProgressBar Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
                      Value="{Binding InsertionSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
         <TextBlock Grid.Row="5" Grid.Column="3" Text="{Binding InsertionSortProgressText}" Margin="3" VerticalAlignment="Center"/>
 
         <!-- Шейкерная -->
-        <TextBlock Grid.Row="6" Grid.Column="0" Text="Прогресс:" Margin="3" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="6" Grid.Column="0" Text="Шейкерная:" Margin="3" VerticalAlignment="Center"/>
         <ProgressBar Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
                      Value="{Binding ShakerSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
         <TextBlock Grid.Row="6" Grid.Column="3" Text="{Binding ShakerSortProgressText}" Margin="3" VerticalAlignment="Center"/>
