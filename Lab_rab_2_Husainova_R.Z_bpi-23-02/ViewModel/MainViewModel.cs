@@ -127,6 +127,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [RelayCommand(CanExecute = nameof(CanSortBubble))]
         private void BubbleSort()
         {
+            _bubbleSortCts = new CancellationTokenSource();
             BubbleSortResult = "Сортируется...";
             BubbleSortProgress = 0;
             BubbleSortProgressText = "0%";
@@ -139,6 +140,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [RelayCommand(CanExecute = nameof(CanSortQuick))]
         private void QuickSort()
         {
+            _quickSortCts = new CancellationTokenSource();
             QuickSortResult = "Сортируется...";
             QuickSortCommand.NotifyCanExecuteChanged();
             QuickSortProgress = 0;
@@ -151,6 +153,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [RelayCommand(CanExecute = nameof(CanSortInsertion))]
         private void InsertionSort()
         {
+            _insertionSortCts = new CancellationTokenSource();
             InsertionSortResult = "Сортируется...";
             InsertionSortProgress = 0;
             InsertionSortProgressText = "0%";
@@ -163,6 +166,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [RelayCommand(CanExecute = nameof(CanSortShaker))]
         private void ShakerSort()
         {
+            _shakerSortCts = new CancellationTokenSource();
             ShakerSortResult = "Сортируется...";
             ShakerSortProgress = 0;
             ShakerSortProgressText = "0%";
