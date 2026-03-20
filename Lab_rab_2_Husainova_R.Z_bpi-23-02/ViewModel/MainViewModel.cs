@@ -2,8 +2,11 @@
 using CommunityToolkit.Mvvm.Input;
 using Lab_rab_2_Husainova_R.Z_bpi_23_02.Model;
 using System;
+using System.Collections.ObjectModel;
 using System.Threading;
+using System.Linq;
 using System.Windows;
+using System.Collections.Generic; 
 namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
 {
     public partial class MainViewModel : ObservableObject
@@ -50,6 +53,15 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         private string _insertionSortProgressText = "0%";
         [ObservableProperty]
         private string _shakerSortProgressText = "0%";
+
+        [ObservableProperty]
+        private ObservableCollection<int> _availableThreadCounts =
+    new ObservableCollection<int> { 1, 2, 4, 8, Environment.ProcessorCount };
+        [ObservableProperty]
+        private int _threadCount = 1;
+        [ObservableProperty]
+        private string _totalExecutionTime = "Общее время: 0 мс";
+        private readonly Dictionary<string, double> _sortTimings = new();
         public MainViewModel()
         {
             _sorter = new ArraySorter();
@@ -198,13 +210,16 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                 if (wasCancelled)
                 {
                     BubbleSortResult = "Пузырьковая: отменена";
+                    _sortTimings.Remove("Bubble");
                 }
                 else
                 {
                     BubbleSortResult = $"Пузырьковая: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс, сравнений: {comparisons}";
                     BubbleSortProgress = 100;
                     BubbleSortProgressText = "100%";
+                    _sortTimings["Bubble"] = elapsedMs;
                     UpdateTotalComparisons();
+                    UpdateTotalExecutionTime();
                 }
                 BubbleSortCommand.NotifyCanExecuteChanged();
             }, null);
@@ -216,13 +231,16 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                 if (wasCancelled)
                 {
                     QuickSortResult = "Быстрая: отменена";
+                    _sortTimings.Remove("Quick");
                 }
                 else
                 {
                     QuickSortResult = $"Быстрая: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс, сравнений: {comparisons}";
                     QuickSortProgress = 100;
                     QuickSortProgressText = "100%";
+                    _sortTimings["Quick"] = elapsedMs;
                     UpdateTotalComparisons();
+                    UpdateTotalExecutionTime();
                 }
                 QuickSortCommand.NotifyCanExecuteChanged();
             }, null);
@@ -234,13 +252,16 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                 if (wasCancelled)
                 {
                     InsertionSortResult = "Вставками: отменена";
+                    _sortTimings.Remove("Insertion");
                 }
                 else
                 {
                     InsertionSortResult = $"Вставками: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс, сравнений: {comparisons}";
                     InsertionSortProgress = 100;
                     InsertionSortProgressText = "100%";
+                    _sortTimings["Insertion"] = elapsedMs;
                     UpdateTotalComparisons();
+                    UpdateTotalExecutionTime();
                 }
                 InsertionSortCommand.NotifyCanExecuteChanged();
             }, null);
@@ -252,13 +273,16 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                 if (wasCancelled)
                 {
                     ShakerSortResult = "Шейкерная: отменена";
+                    _sortTimings.Remove("Shaker");
                 }
                 else
                 {
                     ShakerSortResult = $"Шейкерная: {FormatArray(sortedArray)}, время: {elapsedMs:F2} мс, сравнений: {comparisons}";
                     ShakerSortProgress = 100;
                     ShakerSortProgressText = "100%";
+                    _sortTimings["Shaker"] = elapsedMs;
                     UpdateTotalComparisons();
+                    UpdateTotalExecutionTime();
                 }
                 ShakerSortCommand.NotifyCanExecuteChanged();
             }, null);
@@ -273,6 +297,16 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                 return string.Join(", ", arr);
             else
                 return string.Join(", ", arr, 0, 5) + "...";
+        }
+        partial void OnThreadCountChanged(int value)
+        {
+            _sorter.MaxDegreeOfParallelism = value;
+            System.Diagnostics.Debug.WriteLine($"[VM] Потоков: {value}");
+        }
+        private void UpdateTotalExecutionTime()
+        {
+            double totalMs = _sortTimings.Values.Sum();
+            TotalExecutionTime = $"Общее время выполнения: {totalMs:F2} мс";
         }
     }
 }

@@ -26,6 +26,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
         public event ProgressChangedHandler ShakerSortProgressChanged;
         // Свойство для доступа к общему счётчику
         public long TotalComparisons => _totalComparisons;
+        public int MaxDegreeOfParallelism { get; set; } = 1;
+        private const int SequentialThreshold = 1000;
         // Генерация случайного массива заданного размера
         public int[] GenerateRandomArray(int size)
         {
@@ -49,8 +51,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
             int n = array.Length;
-            int totalOperations = n * (n - 1) / 2;
-            int currentOperation = 0;
+            long totalOperations = (long)n * (n - 1) / 2;  
+            long currentOperation = 0;
             int lastReportedPercent = -1;
             bool wasCancelled = false;
             try
@@ -107,16 +109,32 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             int totalElements = array.Length;
             bool wasCancelled = false;
             int[] processedTracker = { 0 };
+            object progressLock = new object();
             try
             {
-                QuickSortRecursive(array, 0, array.Length - 1, ref comparisons, processedTracker, totalElements, cancellationToken);
+                var parallelOptions = new ParallelOptions
+                {
+                    CancellationToken = cancellationToken,
+                    MaxDegreeOfParallelism = MaxDegreeOfParallelism
+                };
+
+                QuickSortRecursiveParallel(array, 0, array.Length - 1, ref comparisons,
+                    processedTracker, totalElements, parallelOptions, progressLock);
             }
             catch (OperationCanceledException)
             {
                 wasCancelled = true;
             }
+            catch (AggregateException ex)
+            {
+                if (ex.InnerExceptions.Any(e => e is OperationCanceledException))
+                {
+                    wasCancelled = true;
 
-            watch.Stop();
+                }
+            }
+
+                watch.Stop();
 
             if (!wasCancelled)
             {
@@ -128,43 +146,95 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
 
             QuickSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
-        private void QuickSortRecursive(int[] arr, int left, int right, ref long comparisons, int[] processedTracker, int totalElements, CancellationToken cancellationToken)
+        private void QuickSortRecursiveParallel(int[] arr, int left, int right, ref long comparisons,
+    int[] processedTracker, int totalElements, ParallelOptions parallelOptions, object progressLock)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (left < right)
+            parallelOptions.CancellationToken.ThrowIfCancellationRequested();
+            if (left >= right)
             {
-                int pivotIndex = Partition(arr, left, right, ref comparisons, cancellationToken);
-                int processed = processedTracker[0] + (right - left + 1);
-                int percent = Math.Min(100, (int)((processed * 100.0) / totalElements));
-                QuickSortProgressChanged?.Invoke(percent);
-                processedTracker[0] = processed;
+                lock (progressLock)
+                {
+                    processedTracker[0]++;
+                    int percent = Math.Min(100, (int)((processedTracker[0] * 100.0) / totalElements));
+                    QuickSortProgressChanged?.Invoke(percent);
+                }
+                return;
+            }
 
-                QuickSortRecursive(arr, left, pivotIndex - 1, ref comparisons, processedTracker, totalElements, cancellationToken);
-                QuickSortRecursive(arr, pivotIndex + 1, right, ref comparisons, processedTracker, totalElements, cancellationToken);
+            if (right - left < SequentialThreshold || parallelOptions.MaxDegreeOfParallelism <= 1)
+            {
+                QuickSortRecursiveSequential(arr, left, right, ref comparisons,
+                    processedTracker, totalElements, parallelOptions.CancellationToken, progressLock);
+                return;
+            }
+            long leftComparisons = 0;
+            long rightComparisons = 0;
+            int pivotIndex = Partition(arr, left, right, ref comparisons, parallelOptions.CancellationToken);
+
+            Parallel.Invoke(parallelOptions,
+                () => QuickSortRecursiveParallel(arr, left, pivotIndex - 1, ref leftComparisons,
+                    processedTracker, totalElements, parallelOptions, progressLock),
+                () => QuickSortRecursiveParallel(arr, pivotIndex + 1, right, ref rightComparisons,
+                    processedTracker, totalElements, parallelOptions, progressLock)
+            );
+
+            lock (progressLock)
+            {
+                processedTracker[0] += (right - left + 1);
+                int percent = Math.Min(100, (int)((processedTracker[0] * 100.0) / totalElements));
+                QuickSortProgressChanged?.Invoke(percent);
             }
         }
+
+        private void QuickSortRecursiveSequential(int[] arr, int left, int right, ref long comparisons,
+            int[] processedTracker, int totalElements, CancellationToken cancellationToken, object progressLock)
+        {
+            if (left >= right) return;
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            int pivotIndex = Partition(arr, left, right, ref comparisons, cancellationToken);
+
+            lock (progressLock)
+            {
+                int processed = processedTracker[0] + (right - left + 1);
+                int percent = Math.Min(100, totalElements > 0 ? (int)((processed * 100.0) / totalElements) : 100);
+                QuickSortProgressChanged?.Invoke(percent);
+                processedTracker[0] = processed;
+            }
+
+            QuickSortRecursiveSequential(arr, left, pivotIndex - 1, ref comparisons,
+                processedTracker, totalElements, cancellationToken, progressLock);
+            QuickSortRecursiveSequential(arr, pivotIndex + 1, right, ref comparisons,
+                processedTracker, totalElements, cancellationToken, progressLock);
+        }
+
         private int Partition(int[] arr, int left, int right, ref long comparisons, CancellationToken cancellationToken)
         {
             int pivot = arr[right];
             int i = left - 1;
+
             for (int j = left; j < right; j++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 comparisons++;
+
                 if (arr[j] < pivot)
                 {
                     i++;
-                    int temp = arr[i];
+                    int swaptemp = arr[i];
                     arr[i] = arr[j];
-                    arr[j] = temp;
+                    arr[j] = swaptemp;
                 }
             }
-            int temp1 = arr[i + 1];
+
+            int temp = arr[i + 1];
             arr[i + 1] = arr[right];
-            arr[right] = temp1;
+            arr[right] = temp;
+
             return i + 1;
         }
+
         // Метод для сортировки вставками
         public void InsertionSort(int[] originalArray, CancellationToken cancellationToken)
         {
@@ -178,7 +248,6 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             {
                 for (int i = 1; i < array.Length; i++)
                 {
-                    // Проверяем отмену
                     cancellationToken.ThrowIfCancellationRequested();
 
                     int key = array[i];
@@ -186,7 +255,6 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
 
                     while (j >= 0 && array[j] > key)
                     {
-                        // Проверяем отмену
                         if (cancellationToken.IsCancellationRequested)
                         {
                             wasCancelled = true;
@@ -199,7 +267,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                     }
                     if (wasCancelled) break;
 
-                    comparisons++; // учёт последнего сравнения, когда условие не выполнено
+                    comparisons++;
                     array[j + 1] = key;
 
                     int percent = (int)((i * 100.0) / n);
@@ -234,7 +302,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
 
             int n = array.Length;
             int lastReportedPercent = -1;
-            int totalPasses = n;
+            long totalPasses = n;
             int currentPass = 0;
             bool wasCancelled = false;
             int start = 0;

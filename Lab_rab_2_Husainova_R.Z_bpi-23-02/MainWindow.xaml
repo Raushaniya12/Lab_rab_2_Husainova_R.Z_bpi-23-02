@@ -32,7 +32,12 @@
         <Label Grid.Row="0" Grid.Column="0" Content="Размер массива:" Margin="3"/>
         <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ArraySize, UpdateSourceTrigger=PropertyChanged}" Margin="3"/>
         <Button Grid.Row="0" Grid.Column="2" Content="Сгенерировать" Command="{Binding GenerateArrayCommand}" Margin="3"/>
-
+        <!-- Выбор количества потоков-->
+        <Label Grid.Row="3" Grid.Column="3" Content="Потоков:" Margin="3" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <ComboBox Grid.Row="4" Grid.Column="3" 
+          ItemsSource="{Binding AvailableThreadCounts}" 
+          SelectedItem="{Binding ThreadCount, UpdateSourceTrigger=PropertyChanged}" 
+          Margin="3" Width="80"/>
         <!-- Отображение исходного массива -->
         <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding OriginalArrayString}" Margin="3" TextWrapping="Wrap"/>
 
