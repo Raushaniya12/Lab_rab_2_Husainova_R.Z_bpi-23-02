@@ -12,6 +12,9 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
         // Общий счётчик сравнений (разделяемый ресурс)
         private long _totalComparisons;
         private readonly object _locker = new object();
+        public bool UseSharedArray { get; set; } = false;
+        // для синхронизации доступа к общему массиву 
+        private readonly object _arrayAccessLock = new object();
         // Делегаты и события для уведомления о завершении сортировки
         public delegate void SortCompletedHandler(int[] sortedArray, long comparisons, double elapsedMilliseconds, bool wasCancelled);
         public event SortCompletedHandler BubbleSortCompleted;
@@ -154,10 +157,12 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             {
                 lock (progressLock)
                 {
-                    processedTracker[0]++;
+                    int processed = right - left + 1;
+                    processedTracker[0] += processed;
                     int percent = Math.Min(100, (int)((processedTracker[0] * 100.0) / totalElements));
                     QuickSortProgressChanged?.Invoke(percent);
                 }
+
                 return;
             }
 
@@ -178,11 +183,9 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                     processedTracker, totalElements, parallelOptions, progressLock)
             );
 
-            lock (progressLock)
+            lock (_locker)
             {
-                processedTracker[0] += (right - left + 1);
-                int percent = Math.Min(100, (int)((processedTracker[0] * 100.0) / totalElements));
-                QuickSortProgressChanged?.Invoke(percent);
+                comparisons += leftComparisons + rightComparisons;
             }
         }
 

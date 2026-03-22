@@ -62,10 +62,13 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [ObservableProperty]
         private string _totalExecutionTime = "Общее время: 0 мс";
         private readonly Dictionary<string, double> _sortTimings = new();
+
         public MainViewModel()
         {
             _sorter = new ArraySorter();
             _uiContext = SynchronizationContext.Current ?? new SynchronizationContext();
+            var threadOptions = new HashSet<int> { 1, 2, 4, 8, Environment.ProcessorCount };
+            AvailableThreadCounts = new ObservableCollection<int>(threadOptions.OrderBy(x => x));
             // Подписка на события завершения сортировки
             _sorter.BubbleSortCompleted += OnBubbleSortCompleted;
             _sorter.QuickSortCompleted += OnQuickSortCompleted;
@@ -139,6 +142,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [RelayCommand(CanExecute = nameof(CanSortBubble))]
         private void BubbleSort()
         {
+            _bubbleSortCts?.Cancel();
+            _bubbleSortCts?.Dispose();
             _bubbleSortCts = new CancellationTokenSource();
             BubbleSortResult = "Сортируется...";
             BubbleSortProgress = 0;
@@ -152,6 +157,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [RelayCommand(CanExecute = nameof(CanSortQuick))]
         private void QuickSort()
         {
+            _quickSortCts?.Cancel();
+            _quickSortCts?.Dispose();
             _quickSortCts = new CancellationTokenSource();
             QuickSortResult = "Сортируется...";
             QuickSortCommand.NotifyCanExecuteChanged();
@@ -165,6 +172,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [RelayCommand(CanExecute = nameof(CanSortInsertion))]
         private void InsertionSort()
         {
+            _insertionSortCts?.Cancel();
+            _insertionSortCts?.Dispose();
             _insertionSortCts = new CancellationTokenSource();
             InsertionSortResult = "Сортируется...";
             InsertionSortProgress = 0;
@@ -178,6 +187,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [RelayCommand(CanExecute = nameof(CanSortShaker))]
         private void ShakerSort()
         {
+            _shakerSortCts?.Cancel();
+            _shakerSortCts?.Dispose();
             _shakerSortCts = new CancellationTokenSource();
             ShakerSortResult = "Сортируется...";
             ShakerSortProgress = 0;
