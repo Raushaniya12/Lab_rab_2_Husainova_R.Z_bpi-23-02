@@ -62,6 +62,10 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
         [ObservableProperty]
         private string _totalExecutionTime = "Общее время: 0 мс";
         private readonly Dictionary<string, double> _sortTimings = new();
+        [ObservableProperty]
+        private bool _useSharedArray = false;
+        [ObservableProperty]
+        private string _performanceNote = "";
 
         public MainViewModel()
         {
@@ -123,11 +127,11 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
             CancelAll();
             _originalArray = _sorter.GenerateRandomArray(ArraySize);
             // Отображаем первые 20 элементов
-            OriginalArrayString = "Исходный массив: " + string.Join(", ", _originalArray, 0, Math.Min(20,
-           _originalArray.Length)) + (ArraySize > 20 ? "..." : "");
+            OriginalArrayString = "Исходный массив: " + string.Join(", ", _originalArray, 0, Math.Min(20, _originalArray.Length)) + (ArraySize > 20 ? "..." : "");
             // Сбрасываем предыдущие результаты
             BubbleSortResult = QuickSortResult = InsertionSortResult = ShakerSortResult = null;
             TotalComparisons = "Общее число сравнений: 0";
+            PerformanceNote = "";
             BubbleSortProgress = QuickSortProgress = InsertionSortProgress = ShakerSortProgress = 0;
             BubbleSortProgressText = QuickSortProgressText = InsertionSortProgressText = ShakerSortProgressText = "0%";
             // Обновляем состояние команд сортировок
@@ -145,6 +149,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
             _bubbleSortCts?.Cancel();
             _bubbleSortCts?.Dispose();
             _bubbleSortCts = new CancellationTokenSource();
+            _sorter.UseSharedArray = UseSharedArray;
             BubbleSortResult = "Сортируется...";
             BubbleSortProgress = 0;
             BubbleSortProgressText = "0%";
@@ -160,6 +165,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
             _quickSortCts?.Cancel();
             _quickSortCts?.Dispose();
             _quickSortCts = new CancellationTokenSource();
+            _sorter.UseSharedArray = UseSharedArray;
             QuickSortResult = "Сортируется...";
             QuickSortCommand.NotifyCanExecuteChanged();
             QuickSortProgress = 0;
@@ -175,6 +181,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
             _insertionSortCts?.Cancel();
             _insertionSortCts?.Dispose();
             _insertionSortCts = new CancellationTokenSource();
+            _sorter.UseSharedArray = UseSharedArray;
             InsertionSortResult = "Сортируется...";
             InsertionSortProgress = 0;
             InsertionSortProgressText = "0%";
@@ -190,6 +197,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
             _shakerSortCts?.Cancel();
             _shakerSortCts?.Dispose();
             _shakerSortCts = new CancellationTokenSource();
+            _sorter.UseSharedArray = UseSharedArray;
             ShakerSortResult = "Сортируется...";
             ShakerSortProgress = 0;
             ShakerSortProgressText = "0%";
@@ -197,6 +205,22 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
 
             Thread thread = new Thread(() => _sorter.ShakerSort(_originalArray, _shakerSortCts.Token));
             thread.Start();
+        }
+        // запуск всех сортировок 
+        [RelayCommand]
+        private void RunAllSorts()
+        {
+            if (_originalArray == null)
+            {
+                MessageBox.Show("Сначала сгенерируйте массив!", "Предупреждение",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            BubbleSort();
+            QuickSort();
+            InsertionSort();
+            ShakerSort();
         }
         // Команда отмены всех потоков
         [RelayCommand]
@@ -207,12 +231,19 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
             _insertionSortCts?.Cancel();
             _shakerSortCts?.Cancel();
 
+            _bubbleSortCts?.Dispose();
+            _quickSortCts?.Dispose();
+            _insertionSortCts?.Dispose();
+            _shakerSortCts?.Dispose();
+
             // Сбрасываем CancellationTokenSource
             _bubbleSortCts = null;
             _quickSortCts = null;
             _insertionSortCts = null;
             _shakerSortCts = null;
         }
+
+        
         // Обработчики событий (вызываются из фоновых потоков)
         private void OnBubbleSortCompleted(int[] sortedArray, long comparisons, double elapsedMs, bool wasCancelled)
         {
@@ -231,6 +262,10 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                     _sortTimings["Bubble"] = elapsedMs;
                     UpdateTotalComparisons();
                     UpdateTotalExecutionTime();
+                    if (UseSharedArray)
+                    {
+                        PerformanceNote = " Режим общего массива: возможны задержки из-за синхронизации";
+                    }
                 }
                 BubbleSortCommand.NotifyCanExecuteChanged();
             }, null);
@@ -252,6 +287,10 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                     _sortTimings["Quick"] = elapsedMs;
                     UpdateTotalComparisons();
                     UpdateTotalExecutionTime();
+                    if (UseSharedArray)
+                    {
+                        PerformanceNote = " Режим общего массива: возможны задержки из-за синхронизации";
+                    }
                 }
                 QuickSortCommand.NotifyCanExecuteChanged();
             }, null);
@@ -273,6 +312,10 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                     _sortTimings["Insertion"] = elapsedMs;
                     UpdateTotalComparisons();
                     UpdateTotalExecutionTime();
+                    if (UseSharedArray)
+                    {
+                        PerformanceNote = " Режим общего массива: возможны задержки из-за синхронизации";
+                    }
                 }
                 InsertionSortCommand.NotifyCanExecuteChanged();
             }, null);
@@ -294,6 +337,10 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02
                     _sortTimings["Shaker"] = elapsedMs;
                     UpdateTotalComparisons();
                     UpdateTotalExecutionTime();
+                    if (UseSharedArray)
+                    {
+                        PerformanceNote = " Режим общего массива: возможны задержки из-за синхронизации";
+                    }
                 }
                 ShakerSortCommand.NotifyCanExecuteChanged();
             }, null);

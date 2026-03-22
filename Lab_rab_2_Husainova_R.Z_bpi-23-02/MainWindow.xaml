@@ -5,9 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Lab_rab_2_Husainova_R.Z_bpi_23_02"
         mc:Ignorable="d"
-        Title="Сравнение сортировок (многопоточность)" Height="700" Width="800">
+        Title="Сравнение сортировок (многопоточность)" Height="750" Width="800">
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -44,49 +47,60 @@
         <Button Grid.Row="2" Grid.Column="1" Content="Быстрая" Command="{Binding QuickSortCommand}" Margin="3" Width="120"/>
         <Button Grid.Row="2" Grid.Column="2" Content="Вставками" Command="{Binding InsertionSortCommand}" Margin="3" Width="130"/>
         <Button Grid.Row="2" Grid.Column="3" Content="Шейкерная" Command="{Binding ShakerSortCommand}" Margin="3" Width="120"/>
+        <Button Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" 
+        Content="Запустить все сортировки" 
+        Command="{Binding RunAllSortsCommand}" Margin="3"/>
 
         <!-- Выбор количества потоков-->
-        <Label Grid.Row="3" Grid.Column="0" Content="Потоков:" Margin="3" VerticalAlignment="Center"/>
-        <ComboBox Grid.Row="3" Grid.Column="1" 
+        <Label Grid.Row="4" Grid.Column="0" Content="Потоков:" Margin="3" VerticalAlignment="Center"/>
+        <ComboBox Grid.Row="4" Grid.Column="1" 
           ItemsSource="{Binding AvailableThreadCounts}" 
           SelectedItem="{Binding ThreadCount, UpdateSourceTrigger=PropertyChanged}" 
           Margin="3" Width="100" HorizontalAlignment="Left"/>
 
         <!-- Прогресс бары для каждой сортировки -->
         <!-- Пузырьковая -->
-        <TextBlock Grid.Row="4" Grid.Column="0" Text="Пузырьковая:" Margin="3" VerticalAlignment="Center"/>
-        <ProgressBar Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
+        <TextBlock Grid.Row="7" Grid.Column="0" Text="Пузырьковая:" Margin="3" VerticalAlignment="Center"/>
+        <ProgressBar Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
                      Value="{Binding BubbleSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
-        <TextBlock Grid.Row="4" Grid.Column="3" Text="{Binding BubbleSortProgressText}" Margin="3" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="7" Grid.Column="3" Text="{Binding BubbleSortProgressText}" Margin="3" VerticalAlignment="Center"/>
 
         <!-- Быстрая -->
-        <TextBlock Grid.Row="5" Grid.Column="0" Text="Быстрая:" Margin="3" VerticalAlignment="Center"/>
-        <ProgressBar Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
+        <TextBlock Grid.Row="8" Grid.Column="0" Text="Быстрая:" Margin="3" VerticalAlignment="Center"/>
+        <ProgressBar Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
                      Value="{Binding QuickSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
-        <TextBlock Grid.Row="5" Grid.Column="3" Text="{Binding QuickSortProgressText}" Margin="3" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="8" Grid.Column="3" Text="{Binding QuickSortProgressText}" Margin="3" VerticalAlignment="Center"/>
 
         <!-- Вставками -->
-        <TextBlock Grid.Row="6" Grid.Column="0" Text="Вставками:" Margin="3" VerticalAlignment="Center"/>
-        <ProgressBar Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
+        <TextBlock Grid.Row="9" Grid.Column="0" Text="Вставками:" Margin="3" VerticalAlignment="Center"/>
+        <ProgressBar Grid.Row="9" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
                      Value="{Binding InsertionSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
-        <TextBlock Grid.Row="6" Grid.Column="3" Text="{Binding InsertionSortProgressText}" Margin="3" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="9" Grid.Column="3" Text="{Binding InsertionSortProgressText}" Margin="3" VerticalAlignment="Center"/>
 
         <!-- Шейкерная -->
-        <TextBlock Grid.Row="7" Grid.Column="0" Text="Шейкерная:" Margin="3" VerticalAlignment="Center"/>
-        <ProgressBar Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
+        <TextBlock Grid.Row="10" Grid.Column="0" Text="Шейкерная:" Margin="3" VerticalAlignment="Center"/>
+        <ProgressBar Grid.Row="10" Grid.Column="1" Grid.ColumnSpan="2" Height="20" 
                      Value="{Binding ShakerSortProgress}" Minimum="0" Maximum="100" Margin="3"/>
-        <TextBlock Grid.Row="7" Grid.Column="3" Text="{Binding ShakerSortProgressText}" Margin="3" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="10" Grid.Column="3" Text="{Binding ShakerSortProgressText}" Margin="3" VerticalAlignment="Center"/>
 
         <!-- Результаты сортировок -->
-        <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding BubbleSortResult}" Margin="3" TextWrapping="Wrap"/>
-        <TextBlock Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding QuickSortResult}" Margin="3" TextWrapping="Wrap"/>
-        <TextBlock Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding InsertionSortResult}" Margin="3" TextWrapping="Wrap"/>
-        <TextBlock Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding ShakerSortResult}" Margin="3" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding BubbleSortResult}" Margin="3" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding QuickSortResult}" Margin="3" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding InsertionSortResult}" Margin="3" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="14" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding ShakerSortResult}" Margin="3" TextWrapping="Wrap"/>
 
         <!-- Общее число сравнений -->
-        <TextBlock Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding TotalComparisons}" Margin="3" FontWeight="Bold"/>
+        <TextBlock Grid.Row="15" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding TotalComparisons}" Margin="3" FontWeight="Bold"/>
 
         <!-- Общее время выполнения -->
-        <TextBlock Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding TotalExecutionTime}" Margin="3" FontWeight="Bold"/>
+        <TextBlock Grid.Row="16" Grid.Column="0" Grid.ColumnSpan="4" Text="{Binding TotalExecutionTime}" Margin="3" FontWeight="Bold"/>
+
+        <CheckBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="4" 
+          Content="Использовать общий массив (с синхронизацией)" 
+          IsChecked="{Binding UseSharedArray, UpdateSourceTrigger=PropertyChanged}" 
+          Margin="3"/>
+        <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" 
+           Text="{Binding PerformanceNote}" 
+           Margin="3" TextWrapping="Wrap"/>
     </Grid>
 </Window>

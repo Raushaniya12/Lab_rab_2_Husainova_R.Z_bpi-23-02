@@ -47,10 +47,34 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             Array.Copy(source, copy, source.Length);
             return copy;
         }
+        private bool CompareAndSwap(int[] array, int i, int j, ref long comparisons, CancellationToken cancellationToken)
+        {
+            lock (_arrayAccessLock)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                comparisons++;
+
+                if (array[i] > array[j])
+                {
+                    int temp = array[i];
+                    array[i] = array[j];
+                    array[j] = temp;
+                    return true;
+                }
+                return false;
+            }
+        }
+        private int SafeRead(int[] array, int index)
+        {
+            lock (_arrayAccessLock)
+            {
+                return array[index];
+            }
+        }
         // Метод для пузырьковой сортировки (запускается в потоке)
         public void BubbleSort(int[] originalArray, CancellationToken cancellationToken)
         {
-            int[] array = CopyArray(originalArray);
+            int[] array = UseSharedArray ? originalArray : CopyArray(originalArray);
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
             int n = array.Length;
@@ -62,7 +86,11 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             {
                 for (int i = 0; i < array.Length - 1; i++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        wasCancelled = true;
+                        break;
+                    }
 
                     for (int j = 0; j < array.Length - 1 - i; j++)
                     {
@@ -72,23 +100,32 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                             break;
                         }
 
-                        comparisons++;
-                        currentOperation++;
-
-                        if (array[j] > array[j + 1])
+                        // Если общий массив — используем синхронизированный доступ
+                        if (UseSharedArray)
                         {
-                            int temp = array[j];
-                            array[j] = array[j + 1];
-                            array[j + 1] = temp;
+                            CompareAndSwap(array, j, j + 1, ref comparisons, cancellationToken);
                         }
+                        else
+                        {
+                            comparisons++;
+                            if (array[j] > array[j + 1])
+                            {
+                                int temp = array[j];
+                                array[j] = array[j + 1];
+                                array[j + 1] = temp;
+                            }
+                        }
+
+                        currentOperation++;
                         int percent = (int)((currentOperation * 100.0) / totalOperations);
+
+                        // Обновляем прогресс не чаще 1% для производительности
                         if (percent != lastReportedPercent)
                         {
                             BubbleSortProgressChanged?.Invoke(percent);
                             lastReportedPercent = percent;
                         }
                     }
-
                     if (wasCancelled) break;
                 }
             }
@@ -96,23 +133,31 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             {
                 wasCancelled = true;
             }
+
             watch.Stop();
+
+            // Синхронизация общего счётчика сравнений
             lock (_locker)
             {
                 _totalComparisons += comparisons;
             }
-            BubbleSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
+
+            // Возвращаем копию результата, чтобы UI не держал ссылку на общий массив
+            int[] resultSnapshot = (int[])array.Clone();
+            BubbleSortCompleted?.Invoke(resultSnapshot, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
         // Метод для быстрой сортировки (обёртка)
         public void QuickSort(int[] originalArray, CancellationToken cancellationToken)
         {
-            int[] array = CopyArray(originalArray);
+            int[] array = UseSharedArray ? originalArray : CopyArray(originalArray);
+
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
             int totalElements = array.Length;
             bool wasCancelled = false;
             int[] processedTracker = { 0 };
             object progressLock = new object();
+
             try
             {
                 var parallelOptions = new ParallelOptions
@@ -133,11 +178,10 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                 if (ex.InnerExceptions.Any(e => e is OperationCanceledException))
                 {
                     wasCancelled = true;
-
                 }
             }
 
-                watch.Stop();
+            watch.Stop();
 
             if (!wasCancelled)
             {
@@ -147,12 +191,16 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                 }
             }
 
-            QuickSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
+            int[] resultSnapshot = (int[])array.Clone();
+            QuickSortCompleted?.Invoke(resultSnapshot, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
+
         private void QuickSortRecursiveParallel(int[] arr, int left, int right, ref long comparisons,
-    int[] processedTracker, int totalElements, ParallelOptions parallelOptions, object progressLock)
+            int[] processedTracker, int totalElements, ParallelOptions parallelOptions, object progressLock)
         {
-            parallelOptions.CancellationToken.ThrowIfCancellationRequested();
+            if (parallelOptions.CancellationToken.IsCancellationRequested)
+                throw new OperationCanceledException();
+
             if (left >= right)
             {
                 lock (progressLock)
@@ -162,7 +210,6 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                     int percent = Math.Min(100, (int)((processedTracker[0] * 100.0) / totalElements));
                     QuickSortProgressChanged?.Invoke(percent);
                 }
-
                 return;
             }
 
@@ -172,8 +219,11 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                     processedTracker, totalElements, parallelOptions.CancellationToken, progressLock);
                 return;
             }
+
             long leftComparisons = 0;
             long rightComparisons = 0;
+
+            // Partition с синхронизацией для общего массива
             int pivotIndex = Partition(arr, left, right, ref comparisons, parallelOptions.CancellationToken);
 
             Parallel.Invoke(parallelOptions,
@@ -193,8 +243,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             int[] processedTracker, int totalElements, CancellationToken cancellationToken, object progressLock)
         {
             if (left >= right) return;
-
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                throw new OperationCanceledException();
 
             int pivotIndex = Partition(arr, left, right, ref comparisons, cancellationToken);
 
@@ -212,28 +262,59 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                 processedTracker, totalElements, cancellationToken, progressLock);
         }
 
+        // Partition с синхронизацией для общего массива
         private int Partition(int[] arr, int left, int right, ref long comparisons, CancellationToken cancellationToken)
         {
-            int pivot = arr[right];
+            int pivot = SafeRead(arr, right);
             int i = left - 1;
 
             for (int j = left; j < right; j++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                comparisons++;
+                if (cancellationToken.IsCancellationRequested)
+                    throw new OperationCanceledException();
 
-                if (arr[j] < pivot)
+                if (UseSharedArray)
                 {
-                    i++;
-                    int swaptemp = arr[i];
-                    arr[i] = arr[j];
-                    arr[j] = swaptemp;
+                    lock (_arrayAccessLock)
+                    {
+                        comparisons++;
+                        if (arr[j] < pivot)
+                        {
+                            i++;
+                            int swaptemp = arr[i];
+                            arr[i] = arr[j];
+                            arr[j] = swaptemp;
+                        }
+                    }
+                }
+                else
+                {
+                    comparisons++;
+                    if (arr[j] < pivot)
+                    {
+                        i++;
+                        int swaptemp = arr[i];
+                        arr[i] = arr[j];
+                        arr[j] = swaptemp;
+                    }
                 }
             }
 
-            int temp = arr[i + 1];
-            arr[i + 1] = arr[right];
-            arr[right] = temp;
+            if (UseSharedArray)
+            {
+                lock (_arrayAccessLock)
+                {
+                    int temp = arr[i + 1];
+                    arr[i + 1] = arr[right];
+                    arr[right] = temp;
+                }
+            }
+            else
+            {
+                int temp = arr[i + 1];
+                arr[i + 1] = arr[right];
+                arr[right] = temp;
+            }
 
             return i + 1;
         }
@@ -241,22 +322,28 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
         // Метод для сортировки вставками
         public void InsertionSort(int[] originalArray, CancellationToken cancellationToken)
         {
-            int[] array = CopyArray(originalArray);
+            int[] array = UseSharedArray ? originalArray : CopyArray(originalArray);
+
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
             int n = array.Length;
             int lastReportedPercent = -1;
             bool wasCancelled = false;
+
             try
             {
                 for (int i = 1; i < array.Length; i++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        wasCancelled = true;
+                        break;
+                    }
 
-                    int key = array[i];
+                    int key = UseSharedArray ? SafeRead(array, i) : array[i];
                     int j = i - 1;
 
-                    while (j >= 0 && array[j] > key)
+                    while (j >= 0)
                     {
                         if (cancellationToken.IsCancellationRequested)
                         {
@@ -264,14 +351,44 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                             break;
                         }
 
-                        comparisons++;
-                        array[j + 1] = array[j];
-                        j--;
+                        int currentVal = UseSharedArray ? SafeRead(array, j) : array[j];
+
+                        if (currentVal > key)
+                        {
+                            comparisons++;
+                            if (UseSharedArray)
+                            {
+                                lock (_arrayAccessLock)
+                                {
+                                    array[j + 1] = array[j];
+                                }
+                            }
+                            else
+                            {
+                                array[j + 1] = array[j];
+                            }
+                            j--;
+                        }
+                        else
+                        {
+                            comparisons++;
+                            break;
+                        }
                     }
+
                     if (wasCancelled) break;
 
-                    comparisons++;
-                    array[j + 1] = key;
+                    if (UseSharedArray)
+                    {
+                        lock (_arrayAccessLock)
+                        {
+                            array[j + 1] = key;
+                        }
+                    }
+                    else
+                    {
+                        array[j + 1] = key;
+                    }
 
                     int percent = (int)((i * 100.0) / n);
                     if (percent != lastReportedPercent)
@@ -287,6 +404,7 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             }
 
             watch.Stop();
+
             if (!wasCancelled)
             {
                 lock (_locker)
@@ -294,12 +412,15 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                     _totalComparisons += comparisons;
                 }
             }
-            InsertionSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
+
+            int[] resultSnapshot = (int[])array.Clone();
+            InsertionSortCompleted?.Invoke(resultSnapshot, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
         // Метод шейкерной сортировки
         public void ShakerSort(int[] originalArray, CancellationToken cancellationToken)
         {
-            int[] array = CopyArray(originalArray);
+            int[] array = UseSharedArray ? originalArray : CopyArray(originalArray);
+
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -311,14 +432,20 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             int start = 0;
             int end = n - 1;
             bool swapped = true;
+
             try
             {
                 while (swapped)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        wasCancelled = true;
+                        break;
+                    }
 
                     swapped = false;
 
+                    // Прямой проход
                     for (int i = start; i < end; i++)
                     {
                         if (cancellationToken.IsCancellationRequested)
@@ -327,13 +454,22 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                             break;
                         }
 
-                        comparisons++;
-                        if (array[i] > array[i + 1])
+                        if (UseSharedArray)
                         {
-                            int temp = array[i];
-                            array[i] = array[i + 1];
-                            array[i + 1] = temp;
+                            CompareAndSwap(array, i, i + 1, ref comparisons, cancellationToken);
+                            // Проверяем, был ли обмен (упрощённо — считаем, что если сравнивали, то возможен обмен)
                             swapped = true;
+                        }
+                        else
+                        {
+                            comparisons++;
+                            if (array[i] > array[i + 1])
+                            {
+                                int temp = array[i];
+                                array[i] = array[i + 1];
+                                array[i + 1] = temp;
+                                swapped = true;
+                            }
                         }
                     }
 
@@ -351,21 +487,30 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                     swapped = false;
                     end--;
 
+                    // Обратный проход
                     for (int i = end; i > start; i--)
                     {
-                        // Проверяем отмену
                         if (cancellationToken.IsCancellationRequested)
                         {
                             wasCancelled = true;
                             break;
                         }
-                        comparisons++;
-                        if (array[i] < array[i - 1])
+
+                        if (UseSharedArray)
                         {
-                            int temp = array[i];
-                            array[i] = array[i - 1];
-                            array[i - 1] = temp;
+                            CompareAndSwap(array, i - 1, i, ref comparisons, cancellationToken);
                             swapped = true;
+                        }
+                        else
+                        {
+                            comparisons++;
+                            if (array[i] < array[i - 1])
+                            {
+                                int temp = array[i];
+                                array[i] = array[i - 1];
+                                array[i - 1] = temp;
+                                swapped = true;
+                            }
                         }
                     }
 
@@ -396,7 +541,8 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
                 }
             }
 
-            ShakerSortCompleted?.Invoke(array, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
+            int[] resultSnapshot = (int[])array.Clone();
+            ShakerSortCompleted?.Invoke(resultSnapshot, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
     }
 }
