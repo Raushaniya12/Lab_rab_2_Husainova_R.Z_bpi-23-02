@@ -150,39 +150,20 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
         public void QuickSort(int[] originalArray, CancellationToken cancellationToken)
         {
             int[] array = UseSharedArray ? originalArray : CopyArray(originalArray);
-
             long comparisons = 0;
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            int totalElements = array.Length;
             bool wasCancelled = false;
-            int[] processedTracker = { 0 };
-            object progressLock = new object();
 
             try
             {
-                var parallelOptions = new ParallelOptions
-                {
-                    CancellationToken = cancellationToken,
-                    MaxDegreeOfParallelism = MaxDegreeOfParallelism
-                };
-
-                QuickSortRecursiveParallel(array, 0, array.Length - 1, ref comparisons,
-                    processedTracker, totalElements, parallelOptions, progressLock);
+                QuickSortRecursive(array, 0, array.Length - 1, ref comparisons, cancellationToken);
             }
             catch (OperationCanceledException)
             {
                 wasCancelled = true;
             }
-            catch (AggregateException ex)
-            {
-                if (ex.InnerExceptions.Any(e => e is OperationCanceledException))
-                {
-                    wasCancelled = true;
-                }
-            }
 
             watch.Stop();
-
             if (!wasCancelled)
             {
                 lock (_locker)
@@ -195,129 +176,51 @@ namespace Lab_rab_2_Husainova_R.Z_bpi_23_02.Model
             QuickSortCompleted?.Invoke(resultSnapshot, comparisons, watch.Elapsed.TotalMilliseconds, wasCancelled);
         }
 
-        private void QuickSortRecursiveParallel(int[] arr, int left, int right, ref long comparisons,
-            int[] processedTracker, int totalElements, ParallelOptions parallelOptions, object progressLock)
+        private void QuickSortRecursive(int[] arr, int left, int right,
+                                        ref long comparisons, CancellationToken cancellationToken)
         {
-            if (parallelOptions.CancellationToken.IsCancellationRequested)
-                throw new OperationCanceledException();
-
-            if (left >= right)
-            {
-                lock (progressLock)
-                {
-                    int processed = right - left + 1;
-                    processedTracker[0] += processed;
-                    int percent = Math.Min(100, (int)((processedTracker[0] * 100.0) / totalElements));
-                    QuickSortProgressChanged?.Invoke(percent);
-                }
-                return;
-            }
-
-            if (right - left < SequentialThreshold || parallelOptions.MaxDegreeOfParallelism <= 1)
-            {
-                QuickSortRecursiveSequential(arr, left, right, ref comparisons,
-                    processedTracker, totalElements, parallelOptions.CancellationToken, progressLock);
-                return;
-            }
-
-            long leftComparisons = 0;
-            long rightComparisons = 0;
-
-            // Partition с синхронизацией для общего массива
-            int pivotIndex = Partition(arr, left, right, ref comparisons, parallelOptions.CancellationToken);
-
-            Parallel.Invoke(parallelOptions,
-                () => QuickSortRecursiveParallel(arr, left, pivotIndex - 1, ref leftComparisons,
-                    processedTracker, totalElements, parallelOptions, progressLock),
-                () => QuickSortRecursiveParallel(arr, pivotIndex + 1, right, ref rightComparisons,
-                    processedTracker, totalElements, parallelOptions, progressLock)
-            );
-
-            lock (_locker)
-            {
-                comparisons += leftComparisons + rightComparisons;
-            }
-        }
-
-        private void QuickSortRecursiveSequential(int[] arr, int left, int right, ref long comparisons,
-            int[] processedTracker, int totalElements, CancellationToken cancellationToken, object progressLock)
-        {
-            if (left >= right) return;
+            // Проверка отмены
             if (cancellationToken.IsCancellationRequested)
                 throw new OperationCanceledException();
 
+            if (left >= right)
+                return;
             int pivotIndex = Partition(arr, left, right, ref comparisons, cancellationToken);
 
-            lock (progressLock)
-            {
-                int processed = processedTracker[0] + (right - left + 1);
-                int percent = Math.Min(100, totalElements > 0 ? (int)((processed * 100.0) / totalElements) : 100);
-                QuickSortProgressChanged?.Invoke(percent);
-                processedTracker[0] = processed;
-            }
-
-            QuickSortRecursiveSequential(arr, left, pivotIndex - 1, ref comparisons,
-                processedTracker, totalElements, cancellationToken, progressLock);
-            QuickSortRecursiveSequential(arr, pivotIndex + 1, right, ref comparisons,
-                processedTracker, totalElements, cancellationToken, progressLock);
+            QuickSortRecursive(arr, left, pivotIndex - 1, ref comparisons, cancellationToken);
+            QuickSortRecursive(arr, pivotIndex + 1, right, ref comparisons, cancellationToken);
         }
 
-        // Partition с синхронизацией для общего массива
-        private int Partition(int[] arr, int left, int right, ref long comparisons, CancellationToken cancellationToken)
+        private int Partition(int[] arr, int left, int right,
+                              ref long comparisons, CancellationToken cancellationToken)
         {
-            int pivot = SafeRead(arr, right);
+            int pivot = arr[right];  
             int i = left - 1;
 
             for (int j = left; j < right; j++)
             {
+                // Проверка отмены
                 if (cancellationToken.IsCancellationRequested)
                     throw new OperationCanceledException();
 
-                if (UseSharedArray)
+                comparisons++;
+
+                if (arr[j] < pivot)
                 {
-                    lock (_arrayAccessLock)
-                    {
-                        comparisons++;
-                        if (arr[j] < pivot)
-                        {
-                            i++;
-                            int swaptemp = arr[i];
-                            arr[i] = arr[j];
-                            arr[j] = swaptemp;
-                        }
-                    }
-                }
-                else
-                {
-                    comparisons++;
-                    if (arr[j] < pivot)
-                    {
-                        i++;
-                        int swaptemp = arr[i];
-                        arr[i] = arr[j];
-                        arr[j] = swaptemp;
-                    }
+                    i++;
+                    int temp = arr[i];
+                    arr[i] = arr[j];
+                    arr[j] = temp;
                 }
             }
 
-            if (UseSharedArray)
-            {
-                lock (_arrayAccessLock)
-                {
-                    int temp = arr[i + 1];
-                    arr[i + 1] = arr[right];
-                    arr[right] = temp;
-                }
-            }
-            else
-            {
-                int temp = arr[i + 1];
-                arr[i + 1] = arr[right];
-                arr[right] = temp;
-            }
+            int temp1 = arr[i + 1];
+            arr[i + 1] = arr[right];
+            arr[right] = temp1;
 
             return i + 1;
         }
+
 
         // Метод для сортировки вставками
         public void InsertionSort(int[] originalArray, CancellationToken cancellationToken)
